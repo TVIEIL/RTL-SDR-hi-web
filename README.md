@@ -48,9 +48,15 @@ sudo modprobe -r dvb_usb_rtl28xxu 2>/dev/null || true
 
 ```
 
-### 2. Création et activation de l'environnement Conda (Miniconda3)
+### 2. Installation, Création et activation de l'environnement Conda (Miniconda3)
 
 ```bash
+mkdir -p ~/miniconda3
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh onda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+rm ~/miniconda3/miniconda.sh
+~/miniconda3/bin/conda init bash
+source ~/.bashrc
 conda create -n RTL-SDR-hi-web python=3.11 -y
 conda activate RTL-SDR-hi-web
 pip install -r requirements.txt
