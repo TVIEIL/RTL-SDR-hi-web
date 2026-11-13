@@ -24,9 +24,9 @@ L'analyse post-traitement (`analyze_transit.py`) sur une session continue de **1
 
 ## Chaîne matérielle complète
 
-| Antenne (Parabole Prime-Focus) | Récepteur & Filtrage RF | Alimentation Fantôme (Bias-Tee) |
+| Antenne (Parabole Prime-Focus) | Alimentation Fantôme (Bias-Tee) | Récepteur & Filtrage RF |
 | :---: | :---: | :---: |
-| ![Parabole prime-focus 1420 MHz](docs/antenna_setup.jpeg) | ![Nooelec NESDR SMArt + Mini-Circuits VBFZ-1400-S+](docs/sdr_filter_setup.jpeg) | ![Alimentation 5V filtrée et Bias-Tee](docs/bias_tee_psu.jpeg) |
+| ![Parabole prime-focus 1420 MHz](docs/antenna_setup.jpeg) |  ![Alimentation 5V filtrée et Bias-Tee](docs/bias_tee_psu.jpeg) | ![Nooelec NESDR SMArt + Mini-Circuits VBFZ-1400-S+](docs/sdr_filter_setup.jpeg) |
 
 1. **Antenne :** Parabole *prime-focus* ajourée (70 cm, 3 pétales, bande L) dédiée à la raie HI 1420 MHz avec illuminateur axial et LNA intégré.
 2. **Alimentation fantôme (Bias-Tee) :** Module secteur 5 V **Hi-Link HLK-PM01** précédé d'un filtre secteur EMI et suivi d'un double filtre LC en Pi ( 2 × 22 µH + condensateurs de découplage) alimentant le Bias-Tee pour une observation continue 24h/24 (ou batterie 5 V pour un plancher thermique minimal).
