@@ -17,7 +17,7 @@ L'analyse post-traitement (`analyze_transit.py`) sur une session continue de **1
 
 - **Décalage matériel (LO Offset) & suppression dynamique du pic DC :** Accord décalé de `-250 kHz` suivi d'une transposition numérique complexe en bande de base et d'une interpolation dynamique de l'artefact DC matériel, éliminant tout pic central parasite.
 - **Intégration longue durée (Radiomètre numérique) :** Accumulation cohérente de puissance FFT sur `1 min`, `3 min` ou `6 min` pour extraire le faible signal galactique du bruit thermique.
-- **Calibration par soustraction de référence :** Capture d'un spectre de référence (sur charge fictive $50\ \Omega$ ou sur région calme du ciel froid) pour aplatir la courbe de réponse du filtre passe-bande.
+- **Calibration par soustraction de référence :** Capture d'un spectre de référence (sur charge fictive 50 Ω ou sur région calme du ciel froid) pour aplatir la courbe de réponse du filtre passe-bande.
 - **Traitements visuels 100 % réversibles côté client :** Bascule instantanée sur l'historique en mémoire entre le signal brut, le filtre médian anti-impulsions et le lissage gaussien sans interrompre l'acquisition.
 - **Archivage scientifique brut horodaté UTC :** Sauvegarde automatique de chaque spectre intégré brut (non lissé) dans `observations/HI_raw_YYYYMMDD_HHMMSS_UTC.csv` avec métadonnées instrumentales complètes et téléchargement direct depuis l'interface web.
 - **Contrôle strict du gain manuel :** Désactivation complète du CAG (Contrôle Automatique de Gain) afin de garantir une ligne de base stable sur plus de 18 heures d'observation continue.
