@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Moniteur SDR - Raie HI 1420 MHz</title>
+    <style>
+        body { 
+            background: #121212; 
+            color: #e0e0e0; 
+            font-family: monospace; 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            margin: 0; 
+            padding: 15px; 
+        }
+        canvas { 
+            background: #000; 
+            border: 1px solid #333; 
+            margin-top: 4px; 
+            image-rendering: pixelated; 
+        }
+        .controls { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 8px; 
+            align-items: center; 
+            flex-wrap: wrap;
+            justify-content: center;
+            max-width: 960px;
+        }
+        .tool-box {
+            background: #1b1b1b;
+            border: 1px solid #444;
+            padding: 6px 10px;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        button, select, input { 
+            background: #222; 
+            color: #fff; 
+            border: 1px solid #444; 
+            padding: 6px 10px; 
+            font-family: monospace; 
+            border-radius: 4px; 
+        }
+        button:hover:not(:disabled) { 
+            background: #333; 
+            cursor: pointer; 
+        }
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        #btnCaptureRef {
+            border-color: #00bcd4;
+            color: #00e5ff;
+        }
+        #btnDownloadCsv {
+            border-color: #4caf50;
+            color: #81c784;
+        }
+        #status-panel, #record-panel { 
+            display: flex;
+            gap: 20px;
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+        #record-panel {
+            color: #81c784;
+        }
+        #progressContainer {
+            width: 800px;
+            height: 14px;
+            background: #222;
+            border: 1px solid #444;
+            margin-top: 6px;
+            border-radius: 3px;
+            display: none;
+            position: relative;
+            overflow: hidden;
+        }
+        #progressBar {
+            height: 100%;
+            width: 0%;
+            background: #00bcd4;
+            transition: width 0.3s ease;
+        }
+        #progressText {
+            position: absolute;
+            width: 100%;
+            text-align: center;
+            top: 0;
+            font-size: 10px;
+            line-height: 14px;
+            color: #fff;
+        }
+        .canvas-label {
+            width: 800px;
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+        .freq-scale {
+            width: 800px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #4fc3f7;
+            margin-top: 3px;
+            margin-bottom: 6px;
+        }
+        .color-scale-container {
+            width: 800px;
+            margin-top: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+        #colorBar {
+            width: 800px;
+            height: 14px;
+            border-radius: 2px;
+            border: 1px solid #555;
+            box-sizing: border-box;
+            margin-top: 0;
+        }
+        .db-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            color: #bbb;
+        }
+    </style>
+</head>
+<body>
+    <h2>Moniteur SDR - Raie HI 1420 MHz</h2>
+    
+    <div class="controls">
+        <label>Fréq : <input type="number" id="freq" value="1420405750" style="width:115px;"></label>
+        
+        <label>Gain : 
+            <select id="selGain">
+                <option value="10">10 dB</option>
+                <option value="15">15 dB</option>
+                <option value="20">20 dB</option>
+                <option value="25">25 dB</option>
+                <option value="30" selected>30 dB</option>
+                <option value="35">35 dB</option>
+                <option value="40">40 dB</option>
+                <option value="49.6">49.6 dB</option>
+            </select>
+        </label>
+
+        <div class="tool-box">
+            <label><input type="checkbox" id="chkRemoveDC" checked> Masquer pic DC</label>
+            <label title="Supprime les parasites impulsifs étroits"><input type="checkbox" id="chkMedian" checked> Médian</label>
+            <label title="Lissage visuel gaussien réversible (n'altère pas le CSV)"><input type="checkbox" id="chkGaussian" checked> Lissage Gaussien</label>
+        </div>
+
+        <div class="tool-box">
+            <button id="btnCaptureRef" title="Mémoriser le spectre actuel comme référence hors-raie">Sauver Réf.</button>
+            <label><input type="checkbox" id="chkSubtractRef" disabled> Soustraire Réf.</label>
+            <button id="btnClearRef" disabled title="Effacer la référence">X</button>
+        </div>
+
+        <div class="tool-box">
+            <label><input type="checkbox" id="chkIntegration"> Intégration HI</label>
+            <select id="selDuration" disabled>
+                <option value="60">1 min</option>
+                <option value="180">3 min</option>
+                <option value="360" selected>6 min</option>
+            </select>
+            <label title="Enregistre les données brutes dans observations/"><input type="checkbox" id="chkRecord" checked> CSV Brut</label>
+            <button id="btnDownloadCsv" title="Télécharger le fichier CSV brut">CSV</button>
+        </div>
+
+        <button id="btnAudio">Audio</button>
+    </div>
+
+    <div id="status-panel">
+        <span id="wsStatus">WebSocket : En attente...</span>
+        <span>Début : <strong id="lblStartTime">--:--:--</strong></span>
+        <span>Intégrations : <strong id="lblIntCount" style="color:#00e5ff;">0</strong></span>
+        <span>Réf. Fond : <strong id="lblRefStatus" style="color:#888;">Aucune</strong></span>
+    </div>
+
+    <div id="record-panel">
+        <span>Fichier brut actif : <strong id="lblCsvName">Aucun (activer l'intégration)</strong></span>
+        <span>Lignes enregistrées : <strong id="lblSavedCount">0</strong></span>
+    </div>
+
+    <div id="progressContainer">
+        <div id="progressBar"></div>
+        <div id="progressText">0%</div>
+    </div>
+
+    <div class="canvas-label">
+        <span>Spectre HI (Puissance FFT)</span>
+        <span style="color:#ff5252;">| Axe Central</span>
+        <span id="lblUnit">dB Relatif</span>
+    </div>
+    <canvas id="spectrumPlot" width="800" height="150"></canvas>
+
+    <div class="freq-scale">
+        <span id="f0">--</span>
+        <span id="f1">--</span>
+        <span id="f2" style="color:#fff; font-weight:bold;">--</span>
+        <span id="f3">--</span>
+        <span id="f4">--</span>
+    </div>
+
+    <div class="canvas-label">
+        <span>Waterfall (Historique / Ascension Droite)</span>
+        <span>Bande passante utile : 1.875 MHz</span>
+    </div>
+    <canvas id="waterfall" width="800" height="220"></canvas>
+
+    <div class="color-scale-container">
+        <canvas id="colorBar" width="800" height="14"></canvas>
+        <div class="db-labels">
+            <span id="db0">-- dB</span>
+            <span id="db1">-- dB</span>
+            <span id="db2">-- dB</span>
+            <span id="db3">-- dB</span>
+        </div>
+    </div>
+
+    <script>
+        const plotCanvas = document.getElementById('spectrumPlot');
+        const plotCtx = plotCanvas.getContext('2d');
+        const wfCanvas = document.getElementById('waterfall');
+        const wfCtx = wfCanvas.getContext('2d');
+        const colorCanvas = document.getElementById('colorBar');
+        const colorCtx = colorCanvas.getContext('2d');
+
+        const wsStatus = document.getElementById('wsStatus');
+        const btnAudio = document.getElementById('btnAudio');
+        const chkIntegration = document.getElementById('chkIntegration');
+        const selDuration = document.getElementById('selDuration');
+        const chkRecord = document.getElementById('chkRecord');
+        const btnDownloadCsv = document.getElementById('btnDownloadCsv');
+        const lblCsvName = document.getElementById('lblCsvName');
+        const lblSavedCount = document.getElementById('lblSavedCount');
+
+        const chkMedian = document.getElementById('chkMedian');
+        const chkGaussian = document.getElementById('chkGaussian');
+        const chkRemoveDC = document.getElementById('chkRemoveDC');
+        const selGain = document.getElementById('selGain');
+
+        const btnCaptureRef = document.getElementById('btnCaptureRef');
+        const chkSubtractRef = document.getElementById('chkSubtractRef');
+        const btnClearRef = document.getElementById('btnClearRef');
+        const lblRefStatus = document.getElementById('lblRefStatus');
+        const lblUnit = document.getElementById('lblUnit');
+
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+
+        const lblStartTime = document.getElementById('lblStartTime');
+        const lblIntCount = document.getElementById('lblIntCount');
+        const freqInput = document.getElementById('freq');
+
+        const f0 = document.getElementById('f0');
+        const f1 = document.getElementById('f1');
+        const f2 = document.getElementById('f2');
+        const f3 = document.getElementById('f3');
+        const f4 = document.getElementById('f4');
+
+        const db0 = document.getElementById('db0');
+        const db1 = document.getElementById('db1');
+        const db2 = document.getElementById('db2');
+        const db3 = document.getElementById('db3');
+
+        let audioCtx = null;
+        let audioAbort = null;
+        let isPlaying = false;
+        let nextPlayTime = 0;
+        let completedIntegrations = 0;
+
+        // Tampons mémoire pour un rendu visuel 100 % réversible
+        let referenceSpectrum = null;
+        let latestRawSpectrum = null;
+        const rawHistory = []; // Stocke jusqu'à wfCanvas.height spectres bruts (du plus récent au plus ancien)
+
+        const VISIBLE_SPAN = 2400000 * (400 / 512);
+
+        // --- Traitements visuels réversibles côté navigateur ---
+        function applyMedian5(arr) {
+            const n = arr.length;
+            const out = new Array(n);
+            for (let i = 0; i < n; i++) {
+                const win = [
+                    arr[Math.max(0, i - 2)],
+                    arr[Math.max(0, i - 1)],
+                    arr[i],
+                    arr[Math.min(n - 1, i + 1)],
+                    arr[Math.min(n - 1, i + 2)]
+                ].sort((a, b) => a - b);
+                out[i] = win[2];
+            }
+            return out;
+        }
+
+        function applyGaussianSmooth(arr) {
+            // Noyau gaussien 7 points (sigma ~ 1.5 bins, soit ~7 kHz -> préserve totalement la raie HI large de 50-150 kHz)
+            const kernel = [0.036, 0.113, 0.216, 0.270, 0.216, 0.113, 0.036];
+            const half = 3;
+            const n = arr.length;
+            const out = new Array(n);
+            for (let i = 0; i < n; i++) {
+                let sum = 0;
+                for (let k = -half; k <= half; k++) {
+                    const idx = Math.min(n - 1, Math.max(0, i + k));
+                    sum += arr[idx] * kernel[k + half];
+                }
+                out[i] = sum;
+            }
+            return out;
+        }
+
+        function processVisualSpectrum(raw) {
+            if (!raw) return null;
+            let data = raw.slice();
+
+            // 1. Soustraction de la référence si active
+            if (chkSubtractRef.checked && referenceSpectrum && referenceSpectrum.length === data.length) {
+                for (let i = 0; i < data.length; i++) {
+                    data[i] = data[i] - referenceSpectrum[i];
+                }
+            }
+
+            // 2. Filtre médian anti-impulsions
+            if (chkMedian.checked) {
+                data = applyMedian5(data);
+            }
+
+            // 3. Lissage gaussien doux (sans décaler les pics)
+            if (chkGaussian.checked) {
+                data = applyGaussianSmooth(data);
+            }
+
+            return data;
+        }
+
+        function refreshAllVisuals() {
+            if (latestRawSpectrum) {
+                drawSpectrumPlot(processVisualSpectrum(latestRawSpectrum));
+            }
+            redrawFullWaterfall();
+        }
+
+        function drawColorBar() {
+            const grad = colorCtx.createLinearGradient(0, 0, colorCanvas.width, 0);
+            grad.addColorStop(0.00, "rgb(0, 0, 0)");
+            grad.addColorStop(0.25, "rgb(0, 0, 255)");
+            grad.addColorStop(0.50, "rgb(0, 255, 255)");
+            grad.addColorStop(0.75, "rgb(255, 255, 0)");
+            grad.addColorStop(1.00, "rgb(255, 0, 0)");
+
+            colorCtx.fillStyle = grad;
+            colorCtx.fillRect(0, 0, colorCanvas.width, colorCanvas.height);
+        }
+        drawColorBar();
+
+        function updateFreqLabels() {
+            const fc = parseFloat(freqInput.value) || 1420405750;
+            const span = VISIBLE_SPAN / 2;
+
+            f0.textContent = `${((fc - span) / 1e6).toFixed(3)} MHz`;
+            f1.textContent = `${((fc - span / 2) / 1e6).toFixed(3)} MHz`;
+            f2.textContent = `${(fc / 1e6).toFixed(3)} MHz`;
+            f3.textContent = `${((fc + span / 2) / 1e6).toFixed(3)} MHz`;
+            f4.textContent = `${((fc + span) / 1e6).toFixed(3)} MHz`;
+        }
+        updateFreqLabels();
+        freqInput.addEventListener('input', updateFreqLabels);
+
+        const wsProto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const ws = new WebSocket(`${wsProto}//${location.host}/ws/spectrum`);
+
+        function sendServerSettings() {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({
+                    integration: chkIntegration.checked,
+                    duration: parseInt(selDuration.value),
+                    record: chkRecord.checked,
+                    remove_dc: chkRemoveDC.checked,
+                    gain: selGain.value
+                }));
+            }
+        }
+
+        chkIntegration.addEventListener('change', () => {
+            selDuration.disabled = !chkIntegration.checked;
+            progressContainer.style.display = chkIntegration.checked ? 'block' : 'none';
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+            completedIntegrations = 0;
+            lblIntCount.textContent = '0';
+            lblStartTime.textContent = new Date().toLocaleTimeString();
+            if (!chkIntegration.checked) {
+                lblCsvName.textContent = "En pause";
+            }
+            sendServerSettings();
+        });
+
+        selDuration.addEventListener('change', () => {
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+            completedIntegrations = 0;
+            lblIntCount.textContent = '0';
+            lblStartTime.textContent = new Date().toLocaleTimeString();
+            sendServerSettings();
+        });
+
+        chkRecord.addEventListener('change', sendServerSettings);
+        chkRemoveDC.addEventListener('change', sendServerSettings);
+
+        // Bascules visuelles instantanées et 100 % réversibles
+        chkMedian.addEventListener('change', refreshAllVisuals);
+        chkGaussian.addEventListener('change', refreshAllVisuals);
+        chkSubtractRef.addEventListener('change', () => {
+            lblUnit.textContent = chkSubtractRef.checked ? "Δ dB (Calibré)" : "dB Relatif";
+            refreshAllVisuals();
+        });
+
+        btnCaptureRef.addEventListener('click', () => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ action: "capture_ref" }));
+            }
+        });
+
+        btnClearRef.addEventListener('click', () => {
+            if (ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ action: "clear_ref" }));
+            }
+        });
+
+        btnDownloadCsv.addEventListener('click', () => {
+            window.open('/download/latest', '_blank');
+        });
+
+        selGain.addEventListener('change', () => {
+            completedIntegrations = 0;
+            lblIntCount.textContent = '0';
+            lblStartTime.textContent = new Date().toLocaleTimeString();
+            sendServerSettings();
+        });
+
+        ws.onopen = () => {
+            wsStatus.textContent = "WebSocket : Connecté";
+            wsStatus.style.color = "#4caf50";
+            lblStartTime.textContent = new Date().toLocaleTimeString();
+            sendServerSettings();
+        };
+
+        ws.onerror = () => {
+            wsStatus.textContent = "WebSocket : Déconnecté";
+            wsStatus.style.color = "#f44336";
+        };
+
+        ws.onmessage = (event) => {
+            try {
+                const msg = JSON.parse(event.data);
+                if (msg.type === "waterfall") {
+                    if (chkIntegration.checked) {
+                        completedIntegrations++;
+                        lblIntCount.textContent = completedIntegrations;
+                    }
+                    latestRawSpectrum = msg.data;
+                    rawHistory.unshift(msg.data);
+                    if (rawHistory.length > wfCanvas.height) {
+                        rawHistory.pop();
+                    }
+                    const visualData = processVisualSpectrum(msg.data);
+                    drawSpectrumPlot(visualData);
+                    drawWaterfallLine(visualData);
+                } else if (msg.type === "progress") {
+                    progressBar.style.width = `${msg.percent}%`;
+                    progressText.textContent = `${msg.elapsed}s / ${msg.total}s (${msg.percent}%)`;
+                    if (msg.current_data) {
+                        latestRawSpectrum = msg.current_data;
+                        drawSpectrumPlot(processVisualSpectrum(msg.current_data));
+                    }
+                } else if (msg.type === "ref_data") {
+                    referenceSpectrum = msg.ref;
+                    const hasRef = referenceSpectrum !== null;
+                    chkSubtractRef.disabled = !hasRef;
+                    btnClearRef.disabled = !hasRef;
+                    chkSubtractRef.checked = hasRef;
+                    lblRefStatus.textContent = hasRef ? "Active" : "Aucune";
+                    lblRefStatus.style.color = hasRef ? "#4caf50" : "#888";
+                    lblUnit.textContent = hasRef ? "Δ dB (Calibré)" : "dB Relatif";
+                    refreshAllVisuals();
+                } else if (msg.type === "record_status") {
+                    lblCsvName.textContent = msg.filename;
+                    lblSavedCount.textContent = msg.count;
+                }
+            } catch (err) {
+                console.error("Erreur WS:", err);
+            }
+        };
+
+        function drawSpectrumPlot(data) {
+            plotCtx.fillStyle = "#0a0a0a";
+            plotCtx.fillRect(0, 0, plotCanvas.width, plotCanvas.height);
+
+            plotCtx.strokeStyle = "#222";
+            plotCtx.lineWidth = 1;
+            plotCtx.beginPath();
+            for (let y = 25; y < plotCanvas.height; y += 30) {
+                plotCtx.moveTo(0, y);
+                plotCtx.lineTo(plotCanvas.width, y);
+            }
+            plotCtx.stroke();
+
+            plotCtx.strokeStyle = "rgba(255, 60, 60, 0.6)";
+            plotCtx.lineWidth = 1.5;
+            plotCtx.beginPath();
+            plotCtx.moveTo(plotCanvas.width / 2, 0);
+            plotCtx.lineTo(plotCanvas.width / 2, plotCanvas.height);
+            plotCtx.stroke();
+
+            if (!data || data.length === 0) return;
+
+            let minVal = Infinity, maxVal = -Infinity;
+            for (let i = 0; i < data.length; i++) {
+                if (data[i] < minVal) minVal = data[i];
+                if (data[i] > maxVal) maxVal = data[i];
+            }
+            if (maxVal - minVal < 2.0) maxVal = minVal + 2.0;
+
+            plotCtx.strokeStyle = "#00e5ff";
+            plotCtx.lineWidth = 1.5;
+            plotCtx.beginPath();
+            for (let i = 0; i < data.length; i++) {
+                const x = (i / (data.length - 1)) * plotCanvas.width;
+                const norm = (data[i] - minVal) / (maxVal - minVal);
+                const y = plotCanvas.height - (norm * (plotCanvas.height - 20) + 10);
+                if (i === 0) plotCtx.moveTo(x, y);
+                else plotCtx.lineTo(x, y);
+            }
+            plotCtx.stroke();
+        }
+
+        function renderRowAtY(data, yRow, minVal, maxVal) {
+            const binWidth = wfCanvas.width / data.length;
+            for (let i = 0; i < data.length; i++) {
+                const norm = Math.min(1.0, Math.max(0.0, (data[i] - minVal) / (maxVal - minVal)));
+                let r = 0, g = 0, b = 0;
+                if (norm < 0.25) {
+                    b = Math.floor(norm * 4 * 255);
+                } else if (norm < 0.5) {
+                    g = Math.floor((norm - 0.25) * 4 * 255);
+                    b = 255;
+                } else if (norm < 0.75) {
+                    r = Math.floor((norm - 0.5) * 4 * 255);
+                    g = 255;
+                    b = Math.floor((1 - (norm - 0.5) * 4) * 255);
+                } else {
+                    r = 255;
+                    g = Math.floor((1 - (norm - 0.75) * 4) * 255);
+                    b = 0;
+                }
+                wfCtx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                wfCtx.fillRect(Math.floor(i * binWidth), yRow, Math.ceil(binWidth), 1);
+            }
+        }
+
+        function drawWaterfallLine(data) {
+            if (!data || data.length === 0) return;
+
+            const currentImg = wfCtx.getImageData(0, 0, wfCanvas.width, wfCanvas.height - 1);
+            wfCtx.putImageData(currentImg, 0, 1);
+
+            let minVal = Infinity, maxVal = -Infinity;
+            for (let i = 0; i < data.length; i++) {
+                if (data[i] < minVal) minVal = data[i];
+                if (data[i] > maxVal) maxVal = data[i];
+            }
+            if (maxVal - minVal < 2.0) maxVal = minVal + 2.0;
+
+            const delta = maxVal - minVal;
+            db0.textContent = `${minVal.toFixed(1)} dB`;
+            db1.textContent = `${(minVal + delta * 0.33).toFixed(1)} dB`;
+            db2.textContent = `${(minVal + delta * 0.66).toFixed(1)} dB`;
+            db3.textContent = `${maxVal.toFixed(1)} dB`;
+
+            renderRowAtY(data, 0, minVal, maxVal);
+        }
+
+        function redrawFullWaterfall() {
+            wfCtx.fillStyle = "#000";
+            wfCtx.fillRect(0, 0, wfCanvas.width, wfCanvas.height);
+            if (rawHistory.length === 0) return;
+
+            for (let row = 0; row < rawHistory.length; row++) {
+                const processed = processVisualSpectrum(rawHistory[row]);
+                let minVal = Infinity, maxVal = -Infinity;
+                for (let i = 0; i < processed.length; i++) {
+                    if (processed[i] < minVal) minVal = processed[i];
+                    if (processed[i] > maxVal) maxVal = processed[i];
+                }
+                if (maxVal - minVal < 2.0) maxVal = minVal + 2.0;
+
+                if (row === 0) {
+                    const delta = maxVal - minVal;
+                    db0.textContent = `${minVal.toFixed(1)} dB`;
+                    db1.textContent = `${(minVal + delta * 0.33).toFixed(1)} dB`;
+                    db2.textContent = `${(minVal + delta * 0.66).toFixed(1)} dB`;
+                    db3.textContent = `${maxVal.toFixed(1)} dB`;
+                }
+                renderRowAtY(processed, row, minVal, maxVal);
+            }
+        }
+
+        async function stopAudio() {
+            isPlaying = false;
+            btnAudio.textContent = "Audio";
+            if (audioAbort) {
+                try { audioAbort.abort(); } catch (e) {}
+                audioAbort = null;
+            }
+            if (audioCtx) {
+                try {
+                    if (audioCtx.state !== 'closed') await audioCtx.close();
+                } catch (e) {}
+                audioCtx = null;
+            }
+        }
+
+        async function toggleAudio() {
+            if (isPlaying) {
+                await stopAudio();
+                return;
+            }
+
+            const freq = document.getElementById('freq').value;
+
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)({ sampleRate: 24000 });
+                if (audioCtx.state === 'suspended') await audioCtx.resume();
+
+                audioAbort = new AbortController();
+                nextPlayTime = audioCtx.currentTime + 0.05;
+
+                btnAudio.textContent = "Arrêter";
+                isPlaying = true;
+
+                const res = await fetch(`/audio?freq=${freq}&mode=am`, { signal: audioAbort.signal });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const reader = res.body.getReader();
+
+                while (isPlaying) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const int16 = new Int16Array(value.buffer, value.byteOffset, value.byteLength / 2);
+                    if (int16.length === 0) continue;
+
+                    const float32 = new Float32Array(int16.length);
+                    for (let i = 0; i < int16.length; i++) {
+                        float32[i] = int16[i] / 32768.0;
+                    }
+
+                    if (!audioCtx || audioCtx.state === 'closed') break;
+
+                    const audioBuf = audioCtx.createBuffer(1, float32.length, 24000);
+                    audioBuf.getChannelData(0).set(float32);
+
+                    const node = audioCtx.createBufferSource();
+                    node.buffer = audioBuf;
+                    node.connect(audioCtx.destination);
+
+                    if (nextPlayTime < audioCtx.currentTime) {
+                        nextPlayTime = audioCtx.currentTime + 0.02;
+                    }
+                    node.start(nextPlayTime);
+                    nextPlayTime += audioBuf.duration;
+                }
+            } catch (err) {
+                if (err.name !== 'AbortError') console.error("Erreur audio:", err);
+            } finally {
+                if (isPlaying) await stopAudio();
+            }
+        }
+
+        btnAudio.addEventListener('click', toggleAudio);
+    </script>
+</body>
+</html>

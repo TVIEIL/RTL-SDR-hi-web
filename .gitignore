@@ -1,0 +1,25 @@
+# Cache et artefacts Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Environnements virtuels (Conda / venv)
+venv/
+.venv/
+env/
+.conda/
+
+# Données d'observations locales (le jeu de démonstration reste suivi dans examples/)
+observations/*.csv
+observations/*.png
+observations/*.jpg
+
+# Fichiers système et éditeurs
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+*~
