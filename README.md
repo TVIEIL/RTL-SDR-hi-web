@@ -29,11 +29,11 @@ L'analyse post-traitement (`analyze_transit.py`) sur une session continue de **1
 | ![Parabole prime-focus 1420 MHz](docs/antenna_setup.jpeg) | ![Nooelec NESDR SMArt + Mini-Circuits VBFZ-1400-S+](docs/sdr_filter_setup.jpeg) | ![Alimentation 5V filtrée et Bias-Tee](docs/bias_tee_psu.jpeg) |
 
 1. **Antenne :** Parabole *prime-focus* ajourée (70 cm, 3 pétales, bande L) dédiée à la raie HI 1420 MHz avec illuminateur axial et LNA intégré.
-2. **Alimentation fantôme (Bias-Tee) :** Module secteur 5 V **Hi-Link HLK-PM01** précédé d'un filtre secteur EMI et suivi d'un double filtre LC en Pi ($2 \times 22\ \mu\text{H}$ + condensateurs de découplage) alimentant le Bias-Tee pour une observation continue 24h/24 (ou batterie 5 V pour un plancher thermique minimal).
+2. **Alimentation fantôme (Bias-Tee) :** Module secteur 5 V **Hi-Link HLK-PM01** précédé d'un filtre secteur EMI et suivi d'un double filtre LC en Pi ( 2 × 22 µH + condensateurs de découplage) alimentant le Bias-Tee pour une observation continue 24h/24 (ou batterie 5 V pour un plancher thermique minimal).
 3. **Filtrage passe-bande :** Filtre coaxial **Mini-Circuits VBFZ-1400-S+** (1280–1550 MHz) vissé directement en entrée du récepteur pour rejeter les signaux hors-bande (4G/5G, Wi-Fi).
 4. **Récepteur SDR :** **Nooelec NESDR SMArt** (TCXO 0,5 PPM, boîtier aluminium) piloté en mode IQ brut via `rtl_sdr` (gain manuel fixe à 30 dB, CAG désactivé).
 
-> **Note importante sur la calibration $50\ \Omega$ :** Si vous utilisez une charge fictive $50\ \Omega$ pour enregistrer une référence, ne la vissez jamais directement sur la sortie RF+DC d'un Bias-Tee sous tension sans intercaler un condensateur de blocage continu (*DC Block*), au risque de surchauffer la résistance.
+> **Note importante sur la calibration 50 Ω :** Si vous utilisez une charge fictive 50 Ω pour enregistrer une référence, ne la vissez jamais directement sur la sortie RF+DC d'un Bias-Tee sous tension sans intercaler un condensateur de blocage continu (*DC Block*), au risque de surchauffer la résistance.
 
 ## Installation et démarrage
 
