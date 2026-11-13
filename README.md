@@ -69,6 +69,8 @@ pip install -r requirements.txt
 ### 3. Lancement du moniteur
 
 ```bash
+conda activate RTL-SDR-hi-web
+cd RTL-SDR-hi-web
 killall -9 rtl_sdr 2>/dev/null
 python3 -m uvicorn server:app --host 0.0.0.0 --port 8080
 ```
