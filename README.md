@@ -74,3 +74,19 @@ python3 -m uvicorn server:app --host 0.0.0.0 --port 8080
 ```
 
 Ouvrez ensuite votre navigateur à l'adresse http://127.0.0.1:8080.
+
+### 4. ​Analyse post-traitement (Carte Doppler 2D)
+
+​Le script analyze_transit.py exploite les fichiers bruts enregistrés (ou le jeu de données réelles de 183 intégrations fourni dans examples/) pour calibrer le fond de ciel froid, convertir les fréquences en vitesses radiales Doppler (km/s) et générer automatiquement une planche graphique
+
+```bash
+conda activate RTL-SDR-hi-web
+python analyze_transit.py examples/HI_raw_20261112_153302_UTC.csv
+```
+
+Le graphique généré (examples/HI_raw_20261112_153302_UTC.png) affiche :
+
+​1. En haut : La carte de transit 2D (Waterfall Temps UTC vs Vitesse Radiale Doppler en km/s par rapport à 1420.406 MHz).
+
+​2. En bas : Le spectre moyen de la session et le spectre au pic maximal d'émission galactique.
+
