@@ -57,6 +57,8 @@ bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
 rm ~/miniconda3/miniconda.sh
 ~/miniconda3/bin/conda init bash
 source ~/.bashrc
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
 git clone https://github.com/TVIEIL/RTL-SDR-hi-web.git
 cd RTL-SDR-hi-web
 conda create -n RTL-SDR-hi-web python=3.11 -y
