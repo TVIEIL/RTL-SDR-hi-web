@@ -40,7 +40,12 @@ L'analyse post-traitement (`analyze_transit.py`) sur une session continue de **1
 ### 1. Prérequis système (Debian / Ubuntu)
 
 ```bash
-sudo apt update && sudo apt install -y
+
+sudo apt update && sudo apt upgrade -y
+sudo apt install -y rtl-sdr librtlsdr-dev wget
+echo 'blacklist dvb_usb_rtl28xxu' | sudo tee /etc/modprobe.d/blacklist-rtl.conf
+sudo modprobe -r dvb_usb_rtl28xxu 2>/dev/null || true
+
 ```
 
 ### 2. Création et activation de l'environnement Conda (Miniconda3)
