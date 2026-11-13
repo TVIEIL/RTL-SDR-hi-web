@@ -42,7 +42,7 @@ L'analyse post-traitement (`analyze_transit.py`) sur une session continue de **1
 ```bash
 
 sudo apt update && sudo apt upgrade -y
-sudo apt install -y rtl-sdr librtlsdr-dev wget
+sudo apt install -y git rtl-sdr librtlsdr-dev wget
 echo 'blacklist dvb_usb_rtl28xxu' | sudo tee /etc/modprobe.d/blacklist-rtl.conf
 sudo modprobe -r dvb_usb_rtl28xxu 2>/dev/null || true
 
@@ -57,6 +57,8 @@ bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
 rm ~/miniconda3/miniconda.sh
 ~/miniconda3/bin/conda init bash
 source ~/.bashrc
+git clone https://github.com/TVIEIL/RTL-SDR-hi-web.git
+cd RTL-SDR-hi-web
 conda create -n RTL-SDR-hi-web python=3.11 -y
 conda activate RTL-SDR-hi-web
 pip install -r requirements.txt
